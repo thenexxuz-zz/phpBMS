@@ -1,8 +1,8 @@
 <?php
 //
-//  FPDF_TPL - Version 1.2
+//  FPDF_TPL - Version 1.2.2
 //
-//    Copyright 2004-2010 Setasign - Jan Slabon
+//    Copyright 2004-2013 Setasign - Jan Slabon
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -104,6 +104,10 @@ class FPDF_TPL extends FPDF {
             'o_rMargin' => $this->rMargin,
             'o_h' => $this->h,
             'o_w' => $this->w,
+            'o_FontFamily' => $this->FontFamily,
+            'o_FontStyle' => $this->FontStyle,
+            'o_FontSizePt' => $this->FontSizePt,
+            'o_FontSize' => $this->FontSize,
             'buffer' => '',
             'x' => $x,
             'y' => $y,
@@ -121,6 +125,9 @@ class FPDF_TPL extends FPDF {
         $this->SetXY($x + $this->lMargin, $y + $this->tMargin);
         $this->SetRightMargin($this->w - $w + $this->rMargin);
 
+        if ($this->CurrentFont)
+        	$this->_out(sprintf('BT /F%d %.2f Tf ET', $this->CurrentFont['i'], $this->FontSizePt));
+        
         return $this->tpl;
     }
     
@@ -147,6 +154,15 @@ class FPDF_TPL extends FPDF {
             $this->h = $tpl['o_h'];
             $this->w = $tpl['o_w'];
             $this->SetAutoPageBreak($tpl['o_AutoPageBreak'], $tpl['o_bMargin']);
+            
+            $this->FontFamily = $tpl['o_FontFamily'];
+			$this->FontStyle = $tpl['o_FontStyle'];
+			$this->FontSizePt = $tpl['o_FontSizePt'];
+			$this->FontSize = $tpl['o_FontSize'];
+        	
+			$fontkey = $this->FontFamily . $this->FontStyle;
+			if ($fontkey)
+            	$this->CurrentFont =& $this->fonts[$fontkey];
             
             return $this->tpl;
         } else {
@@ -213,13 +229,6 @@ class FPDF_TPL extends FPDF {
         $this->_out(sprintf('q %.4F 0 0 %.4F %.4F %.4F cm', $tData['scaleX'], $tData['scaleY'], $tData['tx'] * $this->k, $tData['ty'] * $this->k)); // Translate 
         $this->_out(sprintf('%s%d Do Q', $this->tplprefix, $tplidx));
 
-        // reset font in the outer graphic state
-        if ($this->FontFamily) {
-	        $family = $this->FontFamily;
-	        $this->FontFamily = '';
-	        $this->SetFont($family);
-        }
-        
         $this->lastUsedTemplateData = $tData;
         
         return array('w' => $_w, 'h' => $_h);
@@ -236,7 +245,7 @@ class FPDF_TPL extends FPDF {
      * @return array The height and width of the template
      */
     function getTemplateSize($tplidx, $_w = 0, $_h = 0) {
-        if (!$this->tpls[$tplidx])
+        if (!isset($this->tpls[$tplidx]))
             return false;
 
         $tpl =& $this->tpls[$tplidx];
@@ -265,12 +274,6 @@ class FPDF_TPL extends FPDF {
         	return call_user_func_array(array($this, 'TCPDF::SetFont'), $args);
         }
         
-        /**
-         * force the resetting of font changes in a template
-         */
-        if ($this->_intpl)
-            $this->FontFamily = '';
-            
         parent::SetFont($family, $style, $size);
        
         $fontkey = $this->FontFamily . $this->FontStyle;
@@ -285,7 +288,11 @@ class FPDF_TPL extends FPDF {
     /**
      * See FPDF/TCPDF-Documentation ;-)
      */
-    function Image($file, $x = null, $y = null, $w = 0, $h = 0, $type = '', $link = '') {
+    function Image(
+		$file, $x = '', $y = '', $w = 0, $h = 0, $type = '', $link = '', $align = '', $resize = false,
+		$dpi = 300, $palign = '', $ismask = false, $imgmask = false, $border = 0, $fitbox = false,
+		$hidden = false, $fitonpage = false, $alt = false, $altimgs = array()
+    ) {
         if (is_subclass_of($this, 'TCPDF')) {
         	$args = func_get_args();
 			return call_user_func_array(array($this, 'TCPDF::Image'), $args);
@@ -306,7 +313,7 @@ class FPDF_TPL extends FPDF {
      *
      * AddPage is not available when you're "in" a template.
      */
-    function AddPage($orientation = '', $format = '') {
+    function AddPage($orientation = '', $format = '', $keepmargins = false, $tocpage = false) {
     	if (is_subclass_of($this, 'TCPDF')) {
         	$args = func_get_args();
         	return call_user_func_array(array($this, 'TCPDF::AddPage'), $args);
@@ -321,7 +328,7 @@ class FPDF_TPL extends FPDF {
     /**
      * Preserve adding Links in Templates ...won't work
      */
-    function Link($x, $y, $w, $h, $link) {
+    function Link($x, $y, $w, $h, $link, $spaces = 0) {
         if (is_subclass_of($this, 'TCPDF')) {
         	$args = func_get_args();
 			return call_user_func_array(array($this, 'TCPDF::Link'), $args);
@@ -444,183 +451,6 @@ class FPDF_TPL extends FPDF {
             $this->tpls[$this->tpl]['buffer'] .= $s . "\n";
         } else {
             parent::_out($s);
-        }
-    }
-
-
-    //======== MEM_IMAGE STUFF ========
-	function FPDF_TPL($orientation='P', $unit='mm', $format='A4')
-	{
-		$this->FPDF($orientation, $unit, $format);
-		//Register var stream protocol
-
-                $existed = in_array("var", stream_get_wrappers());
-                if ($existed)
-                    stream_wrapper_unregister("var");
-
-		stream_wrapper_register('var', 'VariableStream');
-
-                $existed = in_array("global", stream_get_wrappers());
-                if ($existed)
-                    stream_wrapper_unregister("global");
-
-		stream_wrapper_register('global', 'GlobalStream');
-	}
-
-	function MemImage($data, $x=null, $y=null, $w=0, $h=0, $link='')
-	{
-		//Display the image contained in $data
-		$v = 'img'.md5($data);
-		$GLOBALS[$v] = $data;
-		$a = getimagesize('var://'.$v);
-		if(!$a)
-			$this->Error('Invalid image data');
-		$type = substr(strstr($a['mime'],'/'),1);
-		$this->Image('var://'.$v, $x, $y, $w, $h, $type, $link);
-		unset($GLOBALS[$v]);
-	}
-
-	function GDImage($im, $x=null, $y=null, $w=0, $h=0, $link='')
-	{
-		//Display the GD image associated to $im
-		ob_start();
-		imagepng($im);
-		$data = ob_get_clean();
-		$this->MemImage($data, $x, $y, $w, $h, $link);
-	}
-}
-
-
-//Stream handler to read from global variables FROM MEM_IMAGE
-class VariableStream
-{
-	var $varname;
-	var $position;
-
-	function stream_open($path, $mode, $options, &$opened_path)
-	{
-		$url = parse_url($path);
-		$this->varname = $url['host'];
-		if(!isset($GLOBALS[$this->varname]))
-		{
-			trigger_error('Global variable '.$this->varname.' does not exist', E_USER_WARNING);
-			return false;
-		}
-		$this->position = 0;
-		return true;
-	}
-
-	function stream_read($count)
-	{
-		$ret = substr($GLOBALS[$this->varname], $this->position, $count);
-		$this->position += strlen($ret);
-
-		return $ret;
-	}
-
-	function stream_eof()
-	{
-		return $this->position >= strlen($GLOBALS[$this->varname]);
-	}
-
-	function stream_tell()
-	{
-		return $this->position;
-	}
-
-	function stream_seek($offset, $whence)
-	{
-		switch($whence)
-		{
-                    case SEEK_SET:
-
-                        $this->position = $offset;
-			return true;
-
-                    case SEEK_END:
-                        $position = strlen($GLOBALS[$this->varname]) + $offset;
-                        if($position > 0 && $position < strlen($GLOBALS[$this->varname])){
-
-                            $this->position = $position;
-                            return true;
-
-                        }//endif
-
-		}
-		return false;
-	}
-
-	function stream_stat()
-	{
-		return array();
-	}
-
-        function stream_cast($cast_as)
-        {
-            $f = &$this;
-            return $f;
-        }
-}
-
-
-class GlobalStream {
-    private $pos;
-    private $stream;
-
-    public function stream_open($path, $mode, $options, &$opened_path) {
-        $url = parse_url($path);
-        $this->stream = &$GLOBALS[$url["host"]];
-        $this->pos = 0;
-        if (!is_string($this->stream)) return false;
-        return true;
-    }
-
-    public function stream_read($count) {
-        $ret = substr($this->stream, $this->pos, $count);
-        $this->pos += strlen($ret);
-        return $ret;
-    }
-
-    public function stream_write($data){
-        $l=strlen($data);
-        $this->stream =
-            substr($this->stream, 0, $this->pos) .
-            $data .
-            substr($this->stream, $this->pos += $l);
-        return $l;
-    }
-
-    public function stream_tell() {
-        return $this->pos;
-    }
-
-    public function stream_eof() {
-        return $this->pos >= strlen($this->stream);
-    }
-
-    public function stream_seek($offset, $whence) {
-        $l=strlen($this->stream);
-        switch ($whence) {
-            case SEEK_SET: $newPos = $offset; break;
-            case SEEK_CUR: $newPos = $this->pos + $offset; break;
-            case SEEK_END: $newPos = $l + $offset; break;
-            default: return false;
-        }
-        $ret = ($newPos >=0 && $newPos <=$l);
-        if ($ret) $this->pos=$newPos;
-        return $ret;
-    }
-
-    public function url_stat ($path, $flags) {
-        $url = parse_url($path);
-        if (isset($GLOBALS[$url["host"]])) {
-            $size = strlen($GLOBALS[$url["host"]]);
-            return array(
-                7 => $size,
-                'size' => $size
-            );
-        } else {
-            return false;
         }
     }
 }
