@@ -1,6 +1,6 @@
 <?php
 //
-//  FPDF_TPL - Version 1.2.2
+//  FPDF_TPL - Version 1.2.3
 //
 //    Copyright 2004-2013 Setasign - Jan Slabon
 //
@@ -125,8 +125,12 @@ class FPDF_TPL extends FPDF {
         $this->SetXY($x + $this->lMargin, $y + $this->tMargin);
         $this->SetRightMargin($this->w - $w + $this->rMargin);
 
-        if ($this->CurrentFont)
+        if ($this->CurrentFont) {
+            $fontkey = $this->FontFamily . $this->FontStyle;
+		    $this->_res['tpl'][$this->tpl]['fonts'][$fontkey] =& $this->fonts[$fontkey];
+            
         	$this->_out(sprintf('BT /F%d %.2f Tf ET', $this->CurrentFont['i'], $this->FontSizePt));
+        }
         
         return $this->tpl;
     }
