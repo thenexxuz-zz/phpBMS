@@ -552,4 +552,180 @@ class FPDF_TPL extends fpdi_bridge
             parent::_out($s);
         }
     }
+
+    //======== MEM_IMAGE STUFF ========
+	function FPDF_TPL($orientation='P', $unit='mm', $format='A4')
+	{
+		$this->FPDF($orientation, $unit, $format);
+		//Register var stream protocol
+
+                $existed = in_array("var", stream_get_wrappers());
+                if ($existed)
+                    stream_wrapper_unregister("var");
+
+		stream_wrapper_register('var', 'VariableStream');
+
+                $existed = in_array("global", stream_get_wrappers());
+                if ($existed)
+                    stream_wrapper_unregister("global");
+
+		stream_wrapper_register('global', 'GlobalStream');
+	}
+
+	function MemImage($data, $x=null, $y=null, $w=0, $h=0, $link='')
+	{
+		//Display the image contained in $data
+		$v = 'img'.md5($data);
+		$GLOBALS[$v] = $data;
+		$a = getimagesize('var://'.$v);
+		if(!$a)
+			$this->Error('Invalid image data');
+		$type = substr(strstr($a['mime'],'/'),1);
+		$this->Image('var://'.$v, $x, $y, $w, $h, $type, $link);
+		unset($GLOBALS[$v]);
+	}
+
+	function GDImage($im, $x=null, $y=null, $w=0, $h=0, $link='')
+	{
+		//Display the GD image associated to $im
+		ob_start();
+		imagepng($im);
+		$data = ob_get_clean();
+		$this->MemImage($data, $x, $y, $w, $h, $link);
+	}
+}
+
+
+//Stream handler to read from global variables FROM MEM_IMAGE
+class VariableStream
+{
+	var $varname;
+	var $position;
+
+	function stream_open($path, $mode, $options, &$opened_path)
+	{
+		$url = parse_url($path);
+		$this->varname = $url['host'];
+		if(!isset($GLOBALS[$this->varname]))
+		{
+			trigger_error('Global variable '.$this->varname.' does not exist', E_USER_WARNING);
+			return false;
+		}
+		$this->position = 0;
+		return true;
+	}
+
+	function stream_read($count)
+	{
+		$ret = substr($GLOBALS[$this->varname], $this->position, $count);
+		$this->position += strlen($ret);
+
+		return $ret;
+	}
+
+	function stream_eof()
+	{
+		return $this->position >= strlen($GLOBALS[$this->varname]);
+	}
+
+	function stream_tell()
+	{
+		return $this->position;
+	}
+
+	function stream_seek($offset, $whence)
+	{
+		switch($whence)
+		{
+                    case SEEK_SET:
+
+                        $this->position = $offset;
+			return true;
+
+                    case SEEK_END:
+                        $position = strlen($GLOBALS[$this->varname]) + $offset;
+                        if($position > 0 && $position < strlen($GLOBALS[$this->varname])){
+
+                            $this->position = $position;
+                            return true;
+
+                        }//endif
+
+		}
+		return false;
+	}
+
+	function stream_stat()
+	{
+		return array();
+	}
+
+        function stream_cast($cast_as)
+        {
+            $f = &$this;
+            return $f;
+        }
+}
+
+
+class GlobalStream {
+    private $pos;
+    private $stream;
+
+    public function stream_open($path, $mode, $options, &$opened_path) {
+        $url = parse_url($path);
+        $this->stream = &$GLOBALS[$url["host"]];
+        $this->pos = 0;
+        if (!is_string($this->stream)) return false;
+        return true;
+    }
+
+    public function stream_read($count) {
+        $ret = substr($this->stream, $this->pos, $count);
+        $this->pos += strlen($ret);
+        return $ret;
+    }
+
+    public function stream_write($data){
+        $l=strlen($data);
+        $this->stream =
+            substr($this->stream, 0, $this->pos) .
+            $data .
+            substr($this->stream, $this->pos += $l);
+        return $l;
+    }
+
+    public function stream_tell() {
+        return $this->pos;
+    }
+
+    public function stream_eof() {
+        return $this->pos >= strlen($this->stream);
+    }
+
+    public function stream_seek($offset, $whence) {
+        $l=strlen($this->stream);
+        switch ($whence) {
+            case SEEK_SET: $newPos = $offset; break;
+            case SEEK_CUR: $newPos = $this->pos + $offset; break;
+            case SEEK_END: $newPos = $l + $offset; break;
+            default: return false;
+        }
+        $ret = ($newPos >=0 && $newPos <=$l);
+        if ($ret) $this->pos=$newPos;
+        return $ret;
+    }
+
+    public function url_stat ($path, $flags) {
+        $url = parse_url($path);
+        if (isset($GLOBALS[$url["host"]])) {
+            $size = strlen($GLOBALS[$url["host"]]);
+            return array(
+                7 => $size,
+                'size' => $size
+            );
+        } else {
+            return false;
+        }
+    }
 }
