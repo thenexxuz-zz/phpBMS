@@ -71,7 +71,7 @@ class smartSearch{
 
 	function find($term, $offset=0){
 
-		$term = trim(mysql_real_escape_string($term));
+		$term = trim(mysqli_real_escape_string($this->db->db_link,$term));
 
 		// first we take the entered text and explode int by words
 		$terms = explode(" ",$term);

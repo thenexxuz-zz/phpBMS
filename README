@@ -1,24 +1,12 @@
 = phpBMS - README =
 -------------------
-=== Jan 29 2017 update ===
-Since this application seemed to have been dead for many years, I have decided to make it work on newer php7 servers
-Currently I have tackled the main mysql connection issues, and can login and look around a little however there is a lot
-more to do. I am doing this in spare time, I am a beginner programmer, BUT i have been using phpBMS for many years and
-am stuck forcing my server to run in old PHP version to keep it working.
-
-IF anyone out there has the slightest interest PLEASE PLEASE let me know that way I can feel that my efforts will be used by 
-others
-message me on here, or shoot me an email kenny@quast.ca
-
-will update the code on here this week to let others take advantage of it, but right now its still slightly broken once logged in.
 
 
 === SERVER REQUIREMENTS ===
 
 Your server must be running at least:
  * MySQL Server 5.0+
- * PHP 5.2.0+ with MySQL support enabled. <-- This doesnt work anymore KQ
- * PHP 7 with MySQLi support <-- You now need this KQ
+ * PHP 5.2.0+ with MySQL support enabled.
  * Apache 2.0 or higher
 
 
