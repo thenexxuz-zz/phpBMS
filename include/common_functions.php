@@ -55,7 +55,7 @@ class phpbms{
 		$this->db = $db;
 
 		$this->modules = $this->getModules();
-	}
+		}
 
 
 	function showCssIncludes(){
@@ -1170,7 +1170,7 @@ function getAddEditFile($db, $tabledefid, $addedit="edit"){
                         ".$addedit."file AS thefile
                 FROM
                         tabledefs
-                WHERE uuid = '".mysql_real_escape_string($tabledefid)."'";
+                WHERE uuid = '".mysqli_real_escape_string($db->db_link,$tabledefid)."'";
 
 	$queryresult = $db->query($querystatement);
 

@@ -36,22 +36,23 @@
  |                                                                         |
  +-------------------------------------------------------------------------+
 */
-
 class db{
 
     // We may want to do more than connect via mysql. Currently only MySQL code
     // is provided.  Some functions may offer a swtich on type, but others
     // are currently coded for MySQL only
-    var $type="mysql";
+    var $type="mysqli";
 
-    // mysql vars;
+    // mysqli vars;
     var $db_link;
     var $hostname;
     var $schema;
     var $dbuser;
     var $dbpass;
-    var $pconnect = true;
-
+    var $pconnect = false;
+    var $result;
+    var $queryresult;
+    
     var $showError = false;
     var $logError = true;
     var $stopOnError = true;
@@ -59,46 +60,45 @@ class db{
 
     var $error = NULL;
 
-    function db($connect = true, $hostname = NULL, $schema = NULL, $user = NULL, $pass = NULL, $pconnect = NULL, $type = "mysql"){
+    function __construct($connect = true, $hostname = NULL, $schema = NULL, $user = NULL, $pass = NULL, $pconnect = NULL, $type = "mysqli"){
 
-        if($type!="mysql")
+        if($type!="mysqli")
         $this->type=$type;
 
         switch($this->type){
 
             default:
-            case "mysql":
+            case "mysqli":
 
-                if(defined("MYSQL_SERVER"))
-                    $this->hostname = MYSQL_SERVER;
+                if(defined("MYSQLI_SERVER"))
+                    $this->hostname = MYSQLI_SERVER;
 
                 if($hostname!=NULL)
                     $this->hostname = $hostname;
 
-                if(defined("MYSQL_DATABASE"))
-                    $this->schema = MYSQL_DATABASE;
+                if(defined("MYSQLI_DATABASE"))
+                    $this->schema = MYSQLI_DATABASE;
 
                 if($schema!=NULL)
                     $this->schema = $schema;
 
-                if(defined("MYSQL_USER"))
-                    $this->dbuser = MYSQL_USER;
+                if(defined("MYSQLI_USER"))
+                    $this->dbuser = MYSQLI_USER;
 
                 if($schema!=NULL)
                     $this->dbuser = $user;
 
-                if(defined("MYSQL_USERPASS"))
-                    $this->dbpass = MYSQL_USERPASS;
+                if(defined("MYSQLI_USERPASS"))
+                    $this->dbpass = MYSQLI_USERPASS;
 
                 if($schema!=NULL)
                     $this->dbpass = $pass;
 
-                if(defined("MYSQL_PCONNECT"))
-                    $this->pconnect = MYSQL_PCONNECT;
+                if(defined("MYSQLI_PCONNECT"))
+                    $this->pconnect = MYSQLI_PCONNECT;
 
                 if($pconnect!=NULL)
                     $this->pconnect = $pconnect;
-
                 break;
 
         }//end switch
@@ -115,7 +115,11 @@ class db{
                 return false;
         } else
             return true;
-
+     function db($connect = true, $hostname = NULL, $schema = NULL, $user = NULL, $pass = NULL, $pconnect = NULL, $type = "mysqli")   //create a new function within that class that calls itself so really old code still works
+    //Fixes the PHP Deprecated:  Methods with the same name as their class error
+    {                            //bump up and call the _construct instead  
+        self::__construct();
+    }   //End php7 method/constructor fix
     }//end function init (db)
 
 
@@ -129,21 +133,23 @@ class db{
      */
     function connect(){
 
-        if($this->pconnect)
-            $function = "mysql_pconnect";
-        else
-            $function = "mysql_connect";
+       //if($this->pconnect)
+       //     $function = "mysqli_pconnect";
+       // else
+          //  $function = "mysqli_connect";
 
-        $this->db_link = @ $function($this->hostname, $this->dbuser, $this->dbpass, 65536);
+        $this->db_link = new mysqli($this->hostname, $this->dbuser, $this->dbpass, $this->schema);
 
-        if(!$this->db_link){
+        //if(!$this->db_link){
 
-            $error = new appError(-400,"Could not connect to database server.\n\n".$this->getError(),"",$this->showError,$this->stopOnError,false,$this->errorFormat);
-            return false;
+           if($this->db_link->connect_errno > 0){
+    die('Unable to connect to database [' . $db_link->connect_error . ']');
 
-        } else
-            return $this->db_link;
-
+                      // $error = new appError(-400,"Could not connect to database server.\n\n".$this->getError(),"",$this->showError,$this->stopOnError,false,$this->errorFormat);
+          //  return false;
+                   return $this->db_link;
+                  
+     }
     }//end function connect
 
 
@@ -153,7 +159,7 @@ class db{
         if($schema!=NULL)
             $this->schema=$schema;
 
-        if(! @ mysql_select_db($this->schema,$this->db_link)){
+        if(!  mysqli_select_db($this->db_link,$this->schema)){
 
             $error = new appError(-410,"Could not open schema ".$this->schema,"",$this->showError,$this->stopOnError,false,$this->errorFormat);
             return false;
@@ -169,12 +175,12 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
                 if(!isset($this->db_link))
                     if(!$this->db())
                         die($this->error);
-
-                $queryresult = @ mysql_query($sqlstatement,$this->db_link);
+               //The Line Below querys the database in mysqli - Kenny 
+               $queryresult =  mysqli_query($this->db_link, $sqlstatement);
 
                 if(!$queryresult){
 
@@ -200,8 +206,8 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                @ mysql_query("SET NAMES ".$encoding, $this->db_link);
+            case "mysqli":
+                 mysqli_query($this->db_link,"SET NAMES ".$encoding);
                 break;
 
         }//endswitch
@@ -214,11 +220,11 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
                 if($link)
-                    $thereturn = @ mysql_error($link);
+                    $thereturn =  mysqli_error($link);
                 else
-                    $thereturn = @ mysql_error();
+                    $thereturn =  mysqli_error();
 
                 break;
 
@@ -234,8 +240,8 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $numrows = @ mysql_num_rows($queryresult);
+            case "mysqli":
+                $numrows =  mysqli_num_rows($queryresult);
 
                 if(!is_numeric($numrows)){
 
@@ -277,9 +283,9 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
 
-                $return = "AES_ENCRYPT(".$value.",'".mysql_real_escape_string($encryptionKey)."')";
+                $return = "AES_ENCRYPT(".$value.",'".mysqli_real_escape_string($encryptionKey)."')";
 
                 break;
 
@@ -316,9 +322,9 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
 
-                $return = "AES_DECRYPT(".$value.",'".mysql_real_escape_string($encryptionKey)."')";
+                $return = "AES_DECRYPT(".$value.",'".mysqli_real_escape_string($encryptionKey)."')";
 
                 break;
 
@@ -337,8 +343,9 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $row = @ mysql_fetch_assoc($queryresult);
+            case "mysqli":
+            
+                $row =  mysqli_fetch_assoc($queryresult);
                 break;
 
         }//endswitch
@@ -353,7 +360,7 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
                 $this->query("START TRANSACTION;");
                 break;
 
@@ -367,7 +374,7 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
                 $this->query("COMMIT;");
                 break;
 
@@ -381,7 +388,7 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
+            case "mysqli":
                 $this->query("ROLLBACK;");
                 break;
 
@@ -396,8 +403,8 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $thereturn=@ mysql_data_seek($queryresult,$rownum);
+            case "mysqli":
+                $thereturn= mysqli_data_seek($queryresult,$rownum);
                 break;
 
         }//endswitch
@@ -412,8 +419,8 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $thereturn=@ mysql_num_fields($queryresult);
+            case "mysqli":
+                $thereturn= mysqli_num_fields($queryresult);
                 break;
 
         }//endswitch
@@ -422,41 +429,26 @@ class db{
 
     }//end function numFields
 
-
-    function fieldTable($queryresult,$offset){
-        //return the name of the table that a specified field is in
-        // pass a query result and a numerical field offset
-
-        switch($this->type){
-
-            case "mysql":
-                $thereturn=@ mysql_field_table($queryresult,$offset);
-                break;
-
-        }//endswitch
-
-        return $thereturn;
-
-    }//end function fieldTable
-
-
-    function fieldName($queryresult,$offset){
+    function fieldName($queryresult,$offset){  //Testing this out
         //return the name of the field at a specified offset
 
         switch($this->type){
 
-            case "mysql":
-                $thereturn=@ mysql_field_name($queryresult,$offset);
+            case "mysqli":
+    $properties = mysqli_fetch_field_direct($queryresult, $offset);
+    $thereturn is_object($properties) ? $properties->name : null;
+    return $thereturn;
+//                 $thereturn=@ mysql_field_name($queryresult,$offset);
+   
                 break;
 
-        }//end case
+        }//end case 
 
         return $thereturn;
 
     }//end function fieldName
 
-
-    function tableInfo($tablename){
+    function tableInfo($tablename){        
         // returns a multi-dimensional array describing the fields in a
         // provided table name
 
@@ -464,8 +456,10 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $queryresult = @ mysql_list_fields($this->schema,$tablename);
+            case "mysqli":
+
+                $queryresult =  mysql_list_fields($this->schema,$tablename);
+                             
                 if($queryresult){
 
                     for($offset = 0; $offset < mysql_num_fields($queryresult); ++$offset){
@@ -474,15 +468,15 @@ class db{
                         $thereturn[$name]["type"] = @ mysql_field_type($queryresult,$offset);
                         $thereturn[$name]["length"] = mysql_field_len($queryresult,$offset);
                         $thereturn[$name]["flags"] = mysql_field_flags($queryresult,$offset);
-
+                     
                     }//endfor
 
-                }//endif
+                   }//endif
 
             break;
 
         }//end case
-
+      die($queryresult);
         return $thereturn;
 
     }//end function tableInfo
@@ -495,8 +489,8 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $thereturn = @ mysql_insert_id($this->db_link);
+            case "mysqli":
+                $thereturn = mysqli_insert_id($this->db_link);
                 break;
 
         }//endswitch
@@ -514,8 +508,8 @@ class db{
 
         switch($this->type){
 
-            case "mysql":
-                $thereturn = @ mysql_affected_rows($this->db_link);
+            case "mysqli":
+                $thereturn = mysqli_affected_rows($this->db_link);
                 break;
 
         }//endswitch

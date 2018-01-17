@@ -88,7 +88,7 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
             if($this->db === NULL)
                 $error = new appError(-800,"database object is required for parameter 1.","Initializing phpbmsTable Class");
 
-            $this->uuid = mysql_real_escape_string($tabledefid);
+            $this->uuid = mysqli_real_escape_string($this->db->db_link,$tabledefid);
 
             if(!$this->getTableInfo())
                 $error = new appError(-810,"Table definition not found for id ".$this->id,"Initializing phpbmsTable Class");
@@ -375,7 +375,7 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
                 }//endswitch
 
             }//endforeach
-
+ 
             return $therecord;
 
         }//end function getDefaults
@@ -395,7 +395,7 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
 
             if($useUuid){
 
-                $id = mysql_real_escape_string($id);
+                $id = mysqli_real_escape_string($this->db->db_link,$id);
                 $whereclause .= "`uuid` = '".$id."'";
 
             } else {
@@ -410,22 +410,21 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
 
             $fieldlist = "";
             foreach($this->fields as $fieldname => $thefield){
-
+      
                 if(isset($thefield["select"]))
                     $fieldlist .= ", (".$thefield["select"].") AS `".$fieldname."`";
                 else
                     $fieldlist .= ", `".$fieldname."`";
-
+             
             }//end foreach
 
             if($fieldlist)
                 $fieldlist = substr($fieldlist, 1);
 
-
+            // ADDED * to select statment and the screen loaded data... onto the right direction KQ
             $querystatement = "
-                SELECT
-                    ".$fieldlist."
-                FROM
+                SELECT * ".$fieldlist."  
+                FROM 
                     `".$this->maintable."`
                 WHERE
                     ".$whereclause;
@@ -470,15 +469,15 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
         function _loadUUIDList($tableName) {
 
             $list = array();
-            $tableName = mysql_real_escape_string($tableName);
-
+            $tableName = mysqli_real_escape_string($tableName);
+              //changed SELECT to SHOW for mysqli_query in conversion to mysqli - KQ
             $querystatement = "
                 SELECT
                     `uuid`
                 FROM
                     `".$tableName."`
                 ";
-
+                                                         
             $queryresult = $this->db->query($querystatement);
 
             while($therecord = $this->db->fetchArray($queryresult))
@@ -499,8 +498,8 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
          */
         function _checkForValidUUID($tableName, $uuid) {
 
-            $tableName = mysql_real_escape_string($tableName);
-            $uuid = mysql_real_escape_string($uuid);
+            $tableName = mysqli_real_escape_string($tableName);
+            $uuid = mysqli_real_escape_string($uuid);
 
             $querystatement = "
                 SELECT
@@ -563,7 +562,7 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
          * @param bool $useUuid specifies whther to use the id or the uuid (true) in the whereclause.  Default is false.
          *
          * @return bool true or false depending upon update success
-         */
+ÿ   ??   */
         function updateRecord($variables, $modifiedby = NULL, $useUuid = false){
 
             //escape slashes
@@ -632,7 +631,7 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
 
                 $updatestatement .= "
                     WHERE
-                        `uuid` = '".mysql_real_escape_string($variables["uuid"])."'";
+                        `uuid` = '".mysqli_real_escape_string($variables["uuid"])."'";
 
             }//endif
 
@@ -689,7 +688,7 @@ $LastChangedDate: 2007-07-02 15:50:36 -0600 (Mon, 02 Jul 2007) $
                             if(!$useUuid){
 
                                 $fieldlist .= "`uuid`, ";
-                                $insertvalues .= "'".mysql_real_escape_string($variables["uuid"])."', ";
+                                $insertvalues .= "'".mysqli_real_escape_string($variables["uuid"])."', ";
 
                             }//endif
                             break;

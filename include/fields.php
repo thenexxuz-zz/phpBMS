@@ -38,9 +38,9 @@
 */
 
 
-// phpBMS form handles the creation and display of most forms n phpBMS
+// phpBMS form handles the creation and display of most forms in phpBMS
 // it is a necessity in order to correctly implement any of the special
-// input fields ad verification
+// input fields and verification
 class phpbmsForm{
 
     var $jsIncludes = array("common/javascript/fields.js");
@@ -164,7 +164,7 @@ class phpbmsForm{
         //check to see if the form element even exists
         if(isset($this->fields[$fieldname])){
 
-            //check to see if the field is a valid boject
+            //check to see if the field is a valid object
             if(is_object($this->fields[$fieldname])){
 
                 //check to see if it has a display method
@@ -982,7 +982,7 @@ class inputSmartSearch extends inputField{
 			FROM
 				smartsearches
 			WHERE
-				name = '".mysql_real_escape_string($searchInfo)."'
+				name = '".mysqli_real_escape_string($this->db->db_link,$searchInfo)."'
 		";
 
 		return  $this->db->fetchArray($this->db->query($querystatement));
@@ -997,7 +997,7 @@ class inputSmartSearch extends inputField{
 			FROM
 				".$this->searchInfo["fromclause"]."
 			WHERE
-				".$this->searchInfo["valuefield"]." = '".mysql_real_escape_string($this->value)."'
+				".$this->searchInfo["valuefield"]." = '".mysqli_real_escape_string($this->db->db_link,$this->value)."'
 		";
 
 		$queryresult = $this->db->query($querystatement);
