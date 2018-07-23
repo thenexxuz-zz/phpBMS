@@ -38,11 +38,11 @@
 */
 	require_once("include/session.php");
 	require_once("include/search_class.php");
-
+  
 	if(!isset($_GET["id"]))
 	    $error = new appError(100,"Passed Parameter not present.");
 
-	$_GET["id"] = mysql_real_escape_string($_GET["id"]);
+	$_GET["id"] = mysqli_real_escape_string($db->db_link,$_GET["id"]);
 
 	$displayTable= new displaySearchTable($db);
 

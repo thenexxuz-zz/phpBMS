@@ -1220,7 +1220,7 @@
 		function searchFunctions($db, $tabledefuuid, $idsArray = array()){
 
 			$this->db = $db;
-			$this->tabledefuuid = mysql_real_escape_string($tabledefuuid);
+			$this->tabledefuuid = mysqli_real_escape_string($tabledefuuid);
 			$this->idsArray = $idsArray;
 
 			$querystatement = "

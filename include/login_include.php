@@ -1,5 +1,8 @@
 <?php
 /*
+Changing all mysql to mysqli and see what happens.... debug after
+ mysql_real_escape_string was not correct anymore, changed to mysqli syntax as follows
+ mysqli_real_escape_string($this->db->db_link,$password) 
  $Rev$ | $LastChangedBy$
  $LastChangedDate$
  +-------------------------------------------------------------------------+
@@ -71,8 +74,8 @@ class login{
 			FROM
 				users
 			WHERE
-				login = '".mysql_real_escape_string($username)."'
-				AND password = ENCODE('".mysql_real_escape_string($password)."','".mysql_real_escape_string(ENCRYPTION_SEED)."')
+				login = '".mysqli_real_escape_string($this->db->db_link,$username)."'
+				AND password = ENCODE('".mysqli_real_escape_string($this->db->db_link,$password)."','".mysqli_real_escape_string($this->db->db_link,ENCRYPTION_SEED)."')
 				AND revoked = 0
 				AND portalaccess = 0";
 

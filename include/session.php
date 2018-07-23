@@ -313,9 +313,9 @@ class phpbmsLog{
 			INSERT INTO
 				`log`
 			(`type`, `value`, `userid`, `ip`) VALUES (
-				'".mysql_real_escape_string($this->type)."',
-				'".mysql_real_escape_string($this->value)."',
-				'".mysql_real_escape_string($this->userid)."',
+				'".mysqli_real_escape_string($this->db->db_link, $this->type)."',
+				'".mysqli_real_escape_string($this->db->db_link, $this->value)."',
+				'".mysqli_real_escape_string($this->db->db_link, $this->userid)."',
 				'".$ip."'
 			)";
 
@@ -392,7 +392,7 @@ class phpbmsSession{
 						if($endpos!=false)
 							$value=substr($value,$startpos+1,$endpos-$startpos-1);
 
-						if(strpos($key,"mysql_")===0)
+						if(strpos($key,"mysqli_")===0)
 							define(strtoupper($key),$value);
 
 					}//endif key
@@ -404,8 +404,8 @@ class phpbmsSession{
 			@ fclose($settingsfile);
 
 			//For legacy installations where pconnect is not set
-			if(!defined("MYSQL_PCONNECT"))
-				define("MYSQL_CONNECT",true);
+			if(!defined("MYSQLI_PCONNECT"))
+				define("MYSQLI_CONNECT",true);
 
 			//this adds the phpbms root to the include path
 			if ( !defined( "PATH_SEPARATOR" ) ) {
@@ -587,8 +587,8 @@ class phpbmsSession{
                     users
                 WHERE
                 login != 'Scheduler'
-                    AND login = '".mysql_real_escape_string($user)."'
-                    AND password = ENCODE('".mysql_real_escape_string($pass)."', '".mysql_real_escape_string(ENCRYPTION_SEED)."')
+                    AND login = '".mysqli_real_escape_string($this->db->db_link,$user)."'
+                    AND password = ENCODE('".mysqli_real_escape_string($this->db->db_link,$pass)."', '".mysqli_real_escape_string($this->db->db_link,ENCRYPTION_SEED)."')
                     AND revoked = 0
                     AND portalaccess = 1";
 
